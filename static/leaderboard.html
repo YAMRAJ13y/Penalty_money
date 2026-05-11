@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Leaderboard - Bad Word Penalty Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="container flex-between">
+            <div class="brand">
+                <div class="logo-circle">₹</div>
+                <h1 class="brand-title">Gali Penalty Tracker</h1>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
+                <a href="transactions.html" class="nav-link">Logs</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 32px;">
+        <!-- Financial Summary card -->
+        <div class="summary-card" style="margin-top: 0; margin-bottom: 24px;">
+            <div class="summary-item">
+                <h4>Total Collected Money</h4>
+                <div class="amount" id="totalCollectedText" style="color: #10b981;">₹0</div>
+            </div>
+            <div class="summary-item">
+                <h4>Total Pending Money</h4>
+                <div class="amount" id="totalPendingText" style="color: #ef4444;">₹0</div>
+            </div>
+            <div class="summary-item">
+                <h4>Money Receiver</h4>
+                <div class="receiver-name">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Krishiv</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard card view -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Live Leaderboard</h3>
+                    <p class="card-subtitle">Contributors with the highest penalties</p>
+                </div>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList">
+                <!-- Dynamically populated via script -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function fetchLeaderboard() {
+            try {
+                const res = await fetch('/api/members');
+                const members = await res.json();
+                renderLeaderboard(members);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderLeaderboard(members) {
+            // Sort live data by Total Incurred Penalty (totalFine + paidFine) DESC
+            members.sort((a, b) => {
+                const totalA = (a.totalFine || 0) + (a.paidFine || 0);
+                const totalB = (b.totalFine || 0) + (b.paidFine || 0);
+                if (totalB !== totalA) {
+                    return totalB - totalA;
+                }
+                return (b.violations || 0) - (a.violations || 0);
+            });
+
+            let totalPending = 0;
+            let totalCollected = 0;
+            members.forEach(m => {
+                totalPending += (m.totalFine || 0);
+                totalCollected += (m.paidFine || 0);
+            });
+
+            document.getElementById('totalPendingText').textContent = `₹${totalPending}`;
+            document.getElementById('totalCollectedText').textContent = `₹${totalCollected}`;
+
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            
+            const maxIncurred = Math.max(...members.map(m => (m.totalFine || 0) + (m.paidFine || 0)), 1);
+
+            members.forEach((m, idx) => {
+                const rank = idx + 1;
+                let badgeClass = '';
+                if (rank === 1) badgeClass = 'top-1';
+                else if (rank === 2) badgeClass = 'top-2';
+                else if (rank === 3) badgeClass = 'top-3';
+
+                const totalIncurred = (m.totalFine || 0) + (m.paidFine || 0);
+                const progressPercent = Math.min((totalIncurred / maxIncurred) * 100, 100);
+
+                const html = `
+                    <div class="leaderboard-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 16px; width: 100%;">
+                            <div class="rank-badge ${badgeClass}">${rank}</div>
+                            <div class="member-info">
+                                <div class="member-name-row">
+                                    <span class="member-name">${m.name}</span>
+                                    <span class="member-fines" style="font-size: 0.9rem;">
+                                        <strong style="color: var(--text-primary); margin-right: 12px;">Total Penalty: ₹${totalIncurred}</strong>
+                                        <span style="color: #ef4444; margin-right: 8px;">Pending: ₹${m.totalFine || 0}</span>
+                                        <span style="color: #10b981;">Paid: ₹${m.paidFine || 0}</span>
+                                    </span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                                </div>
+                                <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 16px;">
+                                        <span>${m.violations || 0} violation${m.violations === 1 ? '' : 's'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        window.addEventListener('load', () => {
+            fetchLeaderboard();
+            setInterval(fetchLeaderboard, 2000);
+        });
+    </script>
+</body>
+</html>

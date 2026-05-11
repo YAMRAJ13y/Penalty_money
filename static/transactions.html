@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Logs - Bad Word Penalty Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="container flex-between">
+            <div class="brand">
+                <div class="logo-circle">₹</div>
+                <h1 class="brand-title">Gali Penalty Tracker</h1>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+                <a href="transactions.html" class="nav-link active">Logs</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 32px;">
+        <!-- Transaction Table view -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Transaction History</h3>
+                    <p class="card-subtitle">Complete log of all events stored in SQLite</p>
+                </div>
+                <button class="btn btn-outline" onclick="exportCsv()">Export CSV</button>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Member Name</th>
+                            <th>Action & Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsBody">
+                        <!-- Dynamically populated via script -->
+                    </tbody>
+                </table>
+                <div id="noTransactionsMsg" style="text-align: center; color: var(--text-muted); padding: 40px; display: none;">
+                    No recorded transactions yet.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let transactions = [];
+
+        async function fetchTransactions() {
+            try {
+                const res = await fetch('/api/transactions');
+                transactions = await res.json();
+                renderTransactions();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderTransactions() {
+            const tbody = document.getElementById('transactionsBody');
+            const emptyMsg = document.getElementById('noTransactionsMsg');
+            tbody.innerHTML = '';
+
+            if (transactions.length === 0) {
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            emptyMsg.style.display = 'none';
+
+            transactions.forEach(tx => {
+                const tr = document.createElement('tr');
+                const isDeduct = tx.amount.includes('-');
+                const amtStyle = isDeduct ? 'color:#ef4444; font-weight:600;' : 'color:#10b981; font-weight:600;';
+
+                tr.innerHTML = `
+                    <td>${tx.timestamp}</td>
+                    <td style="font-weight:600;">${tx.name}</td>
+                    <td style="${amtStyle}">${tx.amount}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportCsv() {
+            if (transactions.length === 0) {
+                alert("No transactions to export yet.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date & Time,Member Name,Amount\n";
+
+            transactions.forEach(tx => {
+                csvContent += `"${tx.timestamp}","${tx.name}","${tx.amount}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "bad_word_penalty_tracker.csv");
+            document.body.appendChild(link);
+
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.addEventListener('load', () => {
+            fetchTransactions();
+        });
+    </script>
+</body>
+</html>

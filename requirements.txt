@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+sqlite3
+# sqlite3 is built-in but included for clarity; 
+# Note: Vercel serverless functions have a read-only filesystem. 
+# Data in database.db will reset on every redeploy/cold start.

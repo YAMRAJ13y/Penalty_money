@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bad Word Penalty Tracker — Group Fine System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root[data-theme="light"] {
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent-primary: #6366f1;
+            --accent-primary-hover: #4f46e5;
+            --accent-secondary: #ec4899;
+            --border-color: #e2e8f0;
+            --input-bg: #f8fafc;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+            --badge-top-1: #fbbf24;
+            --badge-top-2: #94a3b8;
+            --badge-top-3: #b45309;
+            --gradient-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --gradient-header: linear-gradient(135deg, #4f46e5, #c026d3);
+        }
+
+        :root[data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --bg-sidebar: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #818cf8;
+            --accent-primary-hover: #6366f1;
+            --accent-secondary: #f472b6;
+            --border-color: #334155;
+            --input-bg: #1e293b;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+            --badge-top-1: #fbbf24;
+            --badge-top-2: #cbd5e1;
+            --badge-top-3: #d97706;
+            --gradient-accent: linear-gradient(135deg, #818cf8, #a78bfa);
+            --gradient-header: linear-gradient(135deg, #6366f1, #d946ef);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px; /* Space for dynamic FAB or scrolling */
+            line-height: 1.5;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        /* Utility Styles */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gap-2 { gap: 8px; }
+        .gap-4 { gap: 16px; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            gap: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--gradient-accent);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.95;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: #ffffff;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* Top Header Navigation */
+        .top-nav {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 0;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: var(--gradient-header);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: var(--bg-card-hover);
+            border-color: var(--text-muted);
+        }
+
+        /* Main Section Header/Summary Card */
+        .summary-card {
+            background: var(--gradient-header);
+            border-radius: 20px;
+            padding: 24px 32px;
+            color: #ffffff;
+            margin-top: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            align-items: center;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .summary-item h4 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 6px;
+        }
+
+        .summary-item .amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .summary-item .receiver-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .summary-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .summary-card {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+            .summary-actions {
+                justify-content: flex-start;
+                margin-top: 8px;
+            }
+        }
+
+        /* Dashboard Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .col-leaderboard {
+            grid-column: span 6;
+        }
+
+        .col-members {
+            grid-column: span 6;
+        }
+
+        @media (max-width: 1024px) {
+            .col-leaderboard, .col-members {
+                grid-column: span 12;
+            }
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 14px;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Leaderboard styling */
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background-color: var(--bg-card-hover);
+            border-radius: 12px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .leaderboard-item:hover {
+            border-color: var(--border-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .rank-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+            background: var(--bg-body);
+            color: var(--text-secondary);
+        }
+
+        .rank-badge.top-1 {
+            background-color: var(--badge-top-1);
+            color: #1e1b4b;
+        }
+
+        .rank-badge.top-2 {
+            background-color: var(--badge-top-2);
+            color: #0f172a;
+        }
+
+        .rank-badge.top-3 {
+            background-color: var(--badge-top-3);
+            color: #ffffff;
+        }
+
+        .member-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .member-name-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .member-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .member-fines {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: var(--accent-primary);
+        }
+
+        .member-stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background-color: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--gradient-accent);
+            width: 0%;
+            transition: width 0.6s ease;
+        }
+
+        /* Member grid styling */
+        .members-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .members-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .member-card {
+            background-color: var(--bg-card-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .member-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent-primary);
+        }
+
+        .member-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .member-card-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .member-card-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .member-card-fines {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .member-card-actions {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+
+        /* Bottom Section: Transaction Log */
+        .bottom-card {
+            grid-column: span 12;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: var(--bg-card-hover);
+            padding: 14px 18px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 18px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: var(--bg-card-hover);
+        }
+
+        .empty-log {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Actions Bar/Export Buttons */
+        .actions-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Modal Overlay & Modal Window */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 440px;
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .modal-backdrop.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-select {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 1px var(--accent-primary);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--gradient-accent);
+            color: #ffffff;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-lg);
+            border: none;
+            cursor: pointer;
+            z-index: 40;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        /* Responsive spacing additions */
+        @media (max-width: 640px) {
+            body { padding-bottom: 100px; }
+            .fab { bottom: 16px; right: 16px; width: 54px; height: 54px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="container flex-between">
+            <div class="brand">
+                <div class="logo-circle">₹</div>
+                <h1 class="brand-title">Gali Penalty Tracker</h1>
+            </div>
+            <div class="flex-center gap-2">
+                <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark/light theme">
+                    <!-- Sun / Moon Icon dynamically inserted -->
+                    <svg id="themeToggleIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path id="themeIconPath" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Financial Summary Header Card -->
+        <div class="summary-card">
+            <div class="summary-item">
+                <h4>Total Collected Money</h4>
+                <div class="amount" id="totalCollectedText">₹0</div>
+            </div>
+            <div class="summary-item">
+                <h4>Money Receiver</h4>
+                <div class="receiver-name">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Krishiv</span>
+                </div>
+            </div>
+            <div class="summary-actions">
+                <button class="btn btn-primary" onclick="openAddFineModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14m-7-7v14"/>
+                    </svg>
+                    <span>Record Penalty / Deduction</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Two Column Grid (Leaderboard and Members list) -->
+        <div class="dashboard-grid">
+            
+            <!-- Leaderboard Card -->
+            <div class="col-leaderboard">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary);">
+                                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                                    <path d="M4 22h16"/>
+                                    <path d="M10 14.66V17c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1v-2.34c0-.27.11-.52.3-.71l2.5-2.5C6.12 11.12 6.53 11 7 11c.27 0 .52.11.71.3l2.5 2.5c.19.19.29.44.29.71ZM20 14.66V17c0 .55-.45 1-1 1h-5c-.55 0-1-.45-1-1v-2.34c0-.27.11-.52.3-.71l2.5-2.5c.19-.19.6-.3 1-.3.27 0 .52.11.71.3l2.5 2.5c.19.19.29.44.29.71Z"/>
+                                    <path d="m11 5.31 3.5 1.5 3.5-1.5V1c0-.55-.45-1-1-1H12c-.55 0-1 .45-1 1v4.31ZM12 9V5"/>
+                                </svg>
+                                <span>Leaderboard</span>
+                            </h3>
+                            <p class="card-subtitle">Highest fine contributors at the top</p>
+                        </div>
+                    </div>
+                    <div class="leaderboard-list" id="leaderboardList">
+                        <!-- Dynamic Leaderboard Content goes here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Member List Card -->
+            <div class="col-members">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-secondary);">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <span>Group Members</span>
+                            </h3>
+                            <p class="card-subtitle">List of fixed group members & penalty counts</p>
+                        </div>
+                    </div>
+                    <div class="members-grid" id="membersGrid">
+                        <!-- Dynamic member list content goes here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom: Transaction Log -->
+            <div class="bottom-card card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-secondary);">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            <span>Transaction Log</span>
+                        </h3>
+                        <p class="card-subtitle">Real-time update of all violations and deductions</p>
+                    </div>
+                    <div class="actions-bar">
+                        <button class="btn btn-outline" onclick="exportToCsv()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span>Export CSV</span>
+                        </button>
+                        <button class="btn btn-outline btn-danger" onclick="confirmResetAll()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                            <span>Reset Data</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="transactionTable">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Member Name</th>
+                                <th>Penalty / Adjustment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionLogBody">
+                            <!-- Dynamic dynamic transaction entries -->
+                        </tbody>
+                    </table>
+                    <div id="noTransactionsMsg" class="empty-log" style="display: none;">
+                        No penalties recorded yet. Add a fine to see logs!
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Add Fine Floating Action Button -->
+    <button class="fab" id="fabAddBtn" onclick="openAddFineModal()" aria-label="Add New Fine">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14m-7-7v14"/>
+        </svg>
+    </button>
+
+    <!-- Modal Backdrop -->
+    <div class="modal-backdrop" id="fineModalBackdrop" onclick="closeAddFineModalOnBackdrop(event)">
+        <div class="modal" id="fineModal">
+            <div class="modal-header">
+                <h3 class="modal-title">Record Violation / Deduction</h3>
+                <button class="modal-close" onclick="closeAddFineModal()" aria-label="Close modal">&times;</button>
+            </div>
+            <form id="addFineForm" onsubmit="submitFineForm(event)">
+                <div class="form-group">
+                    <label class="form-label" for="memberSelect">Select Member</label>
+                    <select class="form-select" id="memberSelect" required>
+                        <option value="" disabled selected>Choose a member</option>
+                        <!-- Options generated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="actionSelect">Select Action</label>
+                    <select class="form-select" id="actionSelect" required>
+                        <option value="add" selected>Add ₹10 Fine</option>
+                        <option value="pay">Pay ₹10 Fine</option>
+                        <option value="deduct">Deduct ₹10 Fine</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeAddFineModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Submit Action</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Core App Scripts -->
+    <script>
+        // Data Structure & Storage Definitions
+        const fixedMembers = [
+            "Krishiv", "Sumit", "Jesika", "Parth", "Jay", 
+            "Raj", "Riya .S", "Riya .D", "Renuka", "Kashish"
+        ];
+
+        let members = {};
+        let transactions = [];
+
+        if (window.location.protocol === 'file:') {
+            window.location.href = 'http://127.0.0.1:8000';
+        }
+
+        // Initialization Logic
+        function initApp() {
+            const savedMembers = localStorage.getItem('bad_word_members');
+            const savedTransactions = localStorage.getItem('bad_word_transactions');
+
+            if (savedMembers && savedTransactions) {
+                try {
+                    members = JSON.parse(savedMembers);
+                    transactions = JSON.parse(savedTransactions);
+                    
+                    // Verify that all fixed members exist
+                    fixedMembers.forEach(name => {
+                        if (!members[name]) {
+                            members[name] = { totalFine: 0, violations: 0 };
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error reading saved localStorage data. Re-initializing.", e);
+                    initDefaultData();
+                }
+            } else {
+                initDefaultData();
+            }
+
+            // Sync select options
+            const selectEl = document.getElementById('memberSelect');
+            selectEl.innerHTML = '<option value="" disabled selected>Choose a member</option>';
+            fixedMembers.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                selectEl.appendChild(opt);
+            });
+
+            // Initialize theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeToggleButton(savedTheme);
+
+            // Re-render display
+            renderApp();
+        }
+
+        function initDefaultData() {
+            members = {};
+            fixedMembers.forEach(name => {
+                members[name] = { totalFine: 0, violations: 0 };
+            });
+            transactions = [];
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('bad_word_members', JSON.stringify(members));
+            localStorage.setItem('bad_word_transactions', JSON.stringify(transactions));
+        }
+
+        // Processing Logic & Renders
+        function renderApp() {
+            renderSummaryCard();
+            renderLeaderboard();
+            renderMemberList();
+            renderTransactions();
+        }
+
+        function renderSummaryCard() {
+            let total = 0;
+            fixedMembers.forEach(name => {
+                total += members[name]?.totalFine || 0;
+            });
+            document.getElementById('totalCollectedText').textContent = `₹${total}`;
+        }
+
+        function renderLeaderboard() {
+            const listContainer = document.getElementById('leaderboardList');
+            listContainer.innerHTML = '';
+
+            // Map and sort
+            const sorted = fixedMembers.map(name => ({
+                name,
+                totalFine: members[name]?.totalFine || 0,
+                violations: members[name]?.violations || 0
+            })).sort((a, b) => b.totalFine - a.totalFine);
+
+            // Find maximum fine for proportional progress width styling
+            const maxFine = sorted[0].totalFine || 1; // Prevent division by zero
+
+            sorted.forEach((m, idx) => {
+                const rank = idx + 1;
+                let badgeClass = '';
+                if (rank === 1) badgeClass = 'top-1';
+                else if (rank === 2) badgeClass = 'top-2';
+                else if (rank === 3) badgeClass = 'top-3';
+
+                const progressPercent = Math.min((m.totalFine / maxFine) * 100, 100);
+
+                const itemHtml = `
+                    <div class="leaderboard-item">
+                        <div class="rank-badge ${badgeClass}">${rank}</div>
+                        <div class="member-info">
+                            <div class="member-name-row">
+                                <span class="member-name">${m.name}</span>
+                                <span class="member-fines">₹${m.totalFine}</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="member-stats-row">
+                                <span>${m.violations} violation${m.violations === 1 ? '' : 's'}</span>
+                                <span>₹10 per penalty</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        function renderMemberList() {
+            const membersGrid = document.getElementById('membersGrid');
+            membersGrid.innerHTML = '';
+
+            fixedMembers.forEach(name => {
+                const m = members[name] || { totalFine: 0, violations: 0 };
+                const html = `
+                    <div class="member-card">
+                        <div class="member-card-top">
+                            <div>
+                                <h4 class="member-card-title">${name}</h4>
+                                <p class="member-card-subtitle">${m.violations} violation${m.violations === 1 ? '' : 's'}</p>
+                            </div>
+                            <span class="member-card-fines">₹${m.totalFine}</span>
+                        </div>
+                        <div class="member-card-actions">
+                            <button class="btn btn-outline" style="padding: 6px 8px; font-size: 0.75rem; flex: 1;" onclick="quickAddFine('${name}')" title="Quick Add ₹10">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14m-7-7v14"/>
+                                </svg>
+                                <span>Add</span>
+                            </button>
+                            <button class="btn btn-outline" style="padding: 6px 8px; font-size: 0.75rem; flex: 1; background-color: #10b981; color: white; border-color: #059669;" onclick="quickPayFine('${name}')" title="Quick Pay ₹10">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                <span>Pay</span>
+                            </button>
+                            <button class="btn btn-outline" style="padding: 6px 8px; font-size: 0.75rem; flex: 1;" onclick="quickDeductFine('${name}')" title="Quick Deduct ₹10">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14"/>
+                                </svg>
+                                <span>Deduct</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                membersGrid.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function renderTransactions() {
+            const tbody = document.getElementById('transactionLogBody');
+            const emptyMsg = document.getElementById('noTransactionsMsg');
+            tbody.innerHTML = '';
+
+            if (transactions.length === 0) {
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            emptyMsg.style.display = 'none';
+
+            // Newest transactions first
+            const sortedLogs = [...transactions].reverse();
+
+            sortedLogs.forEach(tx => {
+                const tr = document.createElement('tr');
+                const isDeduction = tx.amount.includes('-');
+                const amtStyle = isDeduction ? 'color:#ef4444; font-weight:600;' : 'color:#10b981; font-weight:600;';
+                tr.innerHTML = `
+                    <td>${tx.timestamp}</td>
+                    <td style="font-weight:600;">${tx.name}</td>
+                    <td style="${amtStyle}">${tx.amount}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Actions & Event Handling
+        function openAddFineModal() {
+            document.getElementById('fineModalBackdrop').classList.add('active');
+        }
+
+        function closeAddFineModal() {
+            document.getElementById('fineModalBackdrop').classList.remove('active');
+            document.getElementById('addFineForm').reset();
+        }
+
+        function closeAddFineModalOnBackdrop(e) {
+            if (e.target.id === 'fineModalBackdrop') {
+                closeAddFineModal();
+            }
+        }
+
+        function quickAddFine(name) {
+            if (members[name]) {
+                members[name].violations += 1;
+                members[name].totalFine += 10;
+
+                const timestamp = new Date().toLocaleString('en-IN', {
+                    year: 'numeric', month: 'short', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+
+                transactions.push({
+                    name: name,
+                    timestamp: timestamp,
+                    amount: '+₹10'
+                });
+
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function quickDeductFine(name) {
+            if (members[name]) {
+                if (members[name].totalFine <= 0) {
+                    alert("Fine balance is already ₹0 for this member.");
+                    return;
+                }
+
+                members[name].violations = Math.max(members[name].violations - 1, 0);
+                members[name].totalFine = Math.max(members[name].totalFine - 10, 0);
+
+                const timestamp = new Date().toLocaleString('en-IN', {
+                    year: 'numeric', month: 'short', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+
+                transactions.push({
+                    name: name,
+                    timestamp: timestamp,
+                    amount: '-₹10'
+                });
+
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function quickPayFine(name) {
+            if (members[name]) {
+                if (members[name].totalFine <= 0) {
+                    alert("No pending fine to pay for this member.");
+                    return;
+                }
+
+                const payAmount = Math.min(10, members[name].totalFine);
+                members[name].totalFine = Math.max(members[name].totalFine - payAmount, 0);
+                members[name].paidFine = (members[name].paidFine || 0) + payAmount;
+
+                const timestamp = new Date().toLocaleString('en-IN', {
+                    year: 'numeric', month: 'short', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+
+                transactions.push({
+                    name: name,
+                    timestamp: timestamp,
+                    amount: `Paid ₹${payAmount}`
+                });
+
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function submitFineForm(e) {
+            e.preventDefault();
+            const name = document.getElementById('memberSelect').value;
+            const action = document.getElementById('actionSelect').value;
+            if (name && members[name]) {
+                if (action === 'add') {
+                    quickAddFine(name);
+                } else if (action === 'pay') {
+                    quickPayFine(name);
+                } else if (action === 'deduct') {
+                    quickDeductFine(name);
+                }
+                closeAddFineModal();
+            }
+        }
+
+        function exportToCsv() {
+            if (transactions.length === 0) {
+                alert("No transactions to export yet.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date & Time,Member Name,Amount\n";
+
+            transactions.forEach(tx => {
+                csvContent += `"${tx.timestamp}","${tx.name}","${tx.amount}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "bad_word_penalty_tracker.csv");
+            document.body.appendChild(link);
+
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function confirmResetAll() {
+            if (confirm("Are you sure you want to delete all penalty data? This action cannot be undone.")) {
+                initDefaultData();
+                renderApp();
+            }
+        }
+
+        // Theme Toggle Controller
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+            let currentTheme = document.documentElement.getAttribute('data-theme');
+            let nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem('theme', nextTheme);
+            updateThemeToggleButton(nextTheme);
+        });
+
+        function updateThemeToggleButton(theme) {
+            const iconPath = document.getElementById('themeIconPath');
+            if (theme === 'dark') {
+                // Return Sun icon for dark mode (to toggle back to light)
+                iconPath.setAttribute('d', 'M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0 M12 2v2 M12 20v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M2 12h2 M20 12h2 M4.22 18.36l1.42-1.42 M18.36 4.22l1.42-1.42');
+            } else {
+                // Return Moon icon for light mode
+                iconPath.setAttribute('d', 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z');
+            }
+        }
+
+        // Direct App start invocation
+        window.addEventListener('load', initApp);
+    </script>
+</body>
+</html>

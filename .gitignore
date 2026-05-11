@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+database.db
+.vercel/
+node_modules/
+.env
