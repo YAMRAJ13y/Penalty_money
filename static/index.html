@@ -25,6 +25,7 @@
                 <a href="index.html" class="nav-link active">Dashboard</a>
                 <a href="leaderboard.html" class="nav-link">Leaderboard</a>
                 <a href="transactions.html" class="nav-link">Logs</a>
+                <a href="#" class="nav-link" onclick="logout()">Logout</a>
             </div>
         </div>
     </nav>
@@ -113,6 +114,17 @@
     </div>
 
     <script>
+        // Auth check
+        const userRole = localStorage.getItem('userRole');
+        if (!userRole) {
+            window.location.href = 'login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('userRole');
+            window.location.href = 'login.html';
+        }
+
         let members = [];
 
         async function fetchApp() {
@@ -120,8 +132,21 @@
                 const res = await fetch('/api/members');
                 members = await res.json();
                 renderMembers();
+                applyRoleRestrictions();
             } catch (e) {
                 console.error("Failed to load members", e);
+            }
+        }
+
+        function applyRoleRestrictions() {
+            if (userRole === 'user') {
+                // Hide all admin-only elements
+                const adminOnly = document.querySelectorAll('.summary-actions, .btn-danger, .member-card-actions');
+                adminOnly.forEach(el => el.style.display = 'none');
+                
+                // Also update subtitle
+                const subtitle = document.querySelector('.card-subtitle');
+                if (subtitle) subtitle.textContent = 'View real-time penalty stats for all members';
             }
         }
 
@@ -133,16 +158,20 @@
             
             // Sync select
             const selectEl = document.getElementById('memberSelect');
-            selectEl.innerHTML = '<option value="" disabled selected>Choose a member</option>';
+            if (selectEl) {
+                selectEl.innerHTML = '<option value="" disabled selected>Choose a member</option>';
+            }
 
             members.forEach(m => {
                 totalPending += m.totalFine;
                 totalCollected += (m.paidFine || 0);
                 
-                const opt = document.createElement('option');
-                opt.value = m.name;
-                opt.textContent = m.name;
-                selectEl.appendChild(opt);
+                if (selectEl) {
+                    const opt = document.createElement('option');
+                    opt.value = m.name;
+                    opt.textContent = m.name;
+                    selectEl.appendChild(opt);
+                }
 
                 const html = `
                     <div class="member-card">
@@ -168,9 +197,16 @@
             
             document.getElementById('totalPendingText').textContent = `₹${totalPending}`;
             document.getElementById('totalCollectedText').textContent = `₹${totalCollected}`;
+            
+            // Re-apply restrictions after rendering
+            applyRoleRestrictions();
         }
 
         async function quickAction(name, action, amount = 10) {
+            if (userRole !== 'admin') {
+                alert("Unauthorized: Only admins can perform actions.");
+                return;
+            }
             try {
                 const res = await fetch('/api/action', {
                     method: 'POST',
@@ -188,7 +224,10 @@
             }
         }
 
-        function openAddFineModal() { document.getElementById('fineModalBackdrop').classList.add('active'); }
+        function openAddFineModal() { 
+            if (userRole !== 'admin') return;
+            document.getElementById('fineModalBackdrop').classList.add('active'); 
+        }
         function closeAddFineModal() { document.getElementById('fineModalBackdrop').classList.remove('active'); document.getElementById('addFineForm').reset(); }
         function closeAddFineModalOnBackdrop(e) { if (e.target.id === 'fineModalBackdrop') closeAddFineModal(); }
 
@@ -204,6 +243,7 @@
         }
 
         async function confirmResetAll() {
+            if (userRole !== 'admin') return;
             if (confirm("Reset everything in SQLite? This action cannot be undone.")) {
                 await fetch('/api/reset', {method: 'POST'});
                 fetchApp();
@@ -212,7 +252,7 @@
 
         window.addEventListener('load', () => {
             fetchApp();
-            setInterval(fetchApp, 2000);
+            setInterval(fetchApp, 5000); // Increased interval to reduce load
         });
     </script>
 </body>

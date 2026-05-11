@@ -25,6 +25,7 @@
                 <a href="index.html" class="nav-link">Dashboard</a>
                 <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
                 <a href="transactions.html" class="nav-link">Logs</a>
+                <a href="#" class="nav-link" onclick="logout()">Logout</a>
             </div>
         </div>
     </nav>
@@ -67,6 +68,17 @@
     </main>
 
     <script>
+        // Auth check
+        const userRole = localStorage.getItem('userRole');
+        if (!userRole) {
+            window.location.href = 'login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('userRole');
+            window.location.href = 'login.html';
+        }
+
         async function fetchLeaderboard() {
             try {
                 const res = await fetch('/api/members');

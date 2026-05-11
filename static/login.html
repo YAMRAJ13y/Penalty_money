@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Gali Penalty Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #f8fafc, #f1f5f9);
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-logo {
+            width: 60px;
+            height: 60px;
+            background: #3b82f6;
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+        .error-msg {
+            background-color: #fee2e2;
+            color: #ef4444;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">₹</div>
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.75rem; color: #1e293b;">Welcome Back</h1>
+            <p style="color: #64748b; margin-top: 8px;">Please enter your credentials</p>
+        </div>
+
+        <div id="errorMsg" class="error-msg">Invalid role or password</div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="roleSelect">Login As</label>
+                <select class="form-select" id="roleSelect" required>
+                    <option value="user">Team Member (Viewer)</option>
+                    <option value="admin">Admin (Manager)</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label" for="passwordInput">Password</label>
+                <input type="password" class="form-select" id="passwordInput" placeholder="Enter password" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 32px; padding: 14px; font-weight: 600;">Sign In</button>
+        </form>
+        
+        <!-- Hints removed as requested -->
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const role = document.getElementById('roleSelect').value;
+            const password = document.getElementById('passwordInput').value;
+            const errorMsg = document.getElementById('errorMsg');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({role, password})
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('userRole', data.role);
+                    window.location.href = 'index.html';
+                } else {
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong");
+            }
+        });
+    </script>
+</body>
+</html>
