@@ -5,6 +5,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+# Try to import psycopg2 at top level for faster error detection in Vercel
+try:
+    import psycopg2
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
+
 app = FastAPI(title="Bad Word Penalty Tracker - Full-Stack Edition")
 
 # Configuration
@@ -13,15 +20,16 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_conn():
-    if DATABASE_URL:
-        import psycopg2
-        # Use SSL for Neon/Heroku/Supabase
-        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    if DATABASE_URL and HAS_POSTGRES:
+        # Some URLs from Neon/Heroku might have issues if they contain duplicate ssl params
+        # We strip potential quotes that users often add by mistake
+        clean_url = DATABASE_URL.strip().strip('"').strip("'")
+        return psycopg2.connect(clean_url)
     else:
         return sqlite3.connect(DB_FILE)
 
 def get_placeholder():
-    return "%s" if DATABASE_URL else "?"
+    return "%s" if (DATABASE_URL and HAS_POSTGRES) else "?"
 
 # Create static directory if it doesn't exist
 if not os.path.exists(STATIC_DIR):
@@ -33,71 +41,64 @@ fixed_members = [
 ]
 
 def init_db():
-    conn = get_db_conn()
-    cursor = conn.cursor()
-    p = get_placeholder()
-    
-    # Create tables
-    if DATABASE_URL:
-        # Postgres syntax
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS members (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE,
-            total_fine INTEGER DEFAULT 0,
-            paid_fine INTEGER DEFAULT 0,
-            violations INTEGER DEFAULT 0
-        )
-        """)
-    else:
-        # SQLite syntax
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            total_fine INTEGER DEFAULT 0,
-            paid_fine INTEGER DEFAULT 0,
-            violations INTEGER DEFAULT 0
-        )
-        """)
-    
-    # Check if paid_fine column exists (Postgres usually doesn't need this if created fresh, but good for migrations)
-    if not DATABASE_URL:
-        cursor.execute("PRAGMA table_info(members)")
-        columns = [col[1] for col in cursor.fetchall()]
-        if "paid_fine" not in columns:
-            cursor.execute("ALTER TABLE members ADD COLUMN paid_fine INTEGER DEFAULT 0")
-
-    if DATABASE_URL:
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id SERIAL PRIMARY KEY,
-            name TEXT,
-            timestamp TEXT,
-            amount TEXT
-        )
-        """)
-    else:
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            timestamp TEXT,
-            amount TEXT
-        )
-        """)
-    
-    # Seed fixed members
-    for name in fixed_members:
-        try:
-            cursor.execute(f"INSERT INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0) ON CONFLICT (name) DO NOTHING", (name,))
-        except:
-            # Fallback for SQLite which doesn't support ON CONFLICT in some versions or uses INSERT OR IGNORE
-            cursor.execute(f"INSERT OR IGNORE INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0)", (name,))
+    try:
+        conn = get_db_conn()
+        cursor = conn.cursor()
+        p = get_placeholder()
         
-    conn.commit()
-    conn.close()
+        # Create tables
+        if DATABASE_URL and HAS_POSTGRES:
+            # Postgres syntax
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS members (
+                id SERIAL PRIMARY KEY,
+                name TEXT UNIQUE,
+                total_fine INTEGER DEFAULT 0,
+                paid_fine INTEGER DEFAULT 0,
+                violations INTEGER DEFAULT 0
+            )
+            """)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                timestamp TEXT,
+                amount TEXT
+            )
+            """)
+        else:
+            # SQLite syntax
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                total_fine INTEGER DEFAULT 0,
+                paid_fine INTEGER DEFAULT 0,
+                violations INTEGER DEFAULT 0
+            )
+            """)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                timestamp TEXT,
+                amount TEXT
+            )
+            """)
+        
+        # Seed fixed members
+        for name in fixed_members:
+            if DATABASE_URL and HAS_POSTGRES:
+                cursor.execute(f"INSERT INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0) ON CONFLICT (name) DO NOTHING", (name,))
+            else:
+                cursor.execute(f"INSERT OR IGNORE INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0)", (name,))
+            
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database initialization warning: {e}")
 
+# Run init_db
 init_db()
 
 # Models
