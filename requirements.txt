@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 pydantic
+psycopg2-binary
 # Note: sqlite3 is built-in and should not be listed here.
 # Note: Vercel serverless functions have a read-only filesystem. 
 # Data in database.db will reset on every redeploy/cold start.

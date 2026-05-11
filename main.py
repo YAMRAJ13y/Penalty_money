@@ -7,8 +7,21 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Bad Word Penalty Tracker - Full-Stack Edition")
 
+# Configuration
 DB_FILE = os.path.join(os.path.dirname(__file__), "database.db")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_db_conn():
+    if DATABASE_URL:
+        import psycopg2
+        # Use SSL for Neon/Heroku/Supabase
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    else:
+        return sqlite3.connect(DB_FILE)
+
+def get_placeholder():
+    return "%s" if DATABASE_URL else "?"
 
 # Create static directory if it doesn't exist
 if not os.path.exists(STATIC_DIR):
@@ -20,38 +33,67 @@ fixed_members = [
 ]
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_conn()
     cursor = conn.cursor()
+    p = get_placeholder()
     
     # Create tables
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS members (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE,
-        total_fine INTEGER DEFAULT 0,
-        paid_fine INTEGER DEFAULT 0,
-        violations INTEGER DEFAULT 0
-    )
-    """)
+    if DATABASE_URL:
+        # Postgres syntax
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS members (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE,
+            total_fine INTEGER DEFAULT 0,
+            paid_fine INTEGER DEFAULT 0,
+            violations INTEGER DEFAULT 0
+        )
+        """)
+    else:
+        # SQLite syntax
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE,
+            total_fine INTEGER DEFAULT 0,
+            paid_fine INTEGER DEFAULT 0,
+            violations INTEGER DEFAULT 0
+        )
+        """)
     
-    # Check if paid_fine column exists
-    cursor.execute("PRAGMA table_info(members)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if "paid_fine" not in columns:
-        cursor.execute("ALTER TABLE members ADD COLUMN paid_fine INTEGER DEFAULT 0")
+    # Check if paid_fine column exists (Postgres usually doesn't need this if created fresh, but good for migrations)
+    if not DATABASE_URL:
+        cursor.execute("PRAGMA table_info(members)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if "paid_fine" not in columns:
+            cursor.execute("ALTER TABLE members ADD COLUMN paid_fine INTEGER DEFAULT 0")
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        timestamp TEXT,
-        amount TEXT
-    )
-    """)
+    if DATABASE_URL:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            timestamp TEXT,
+            amount TEXT
+        )
+        """)
+    else:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            timestamp TEXT,
+            amount TEXT
+        )
+        """)
     
     # Seed fixed members
     for name in fixed_members:
-        cursor.execute("INSERT OR IGNORE INTO members (name, total_fine, paid_fine, violations) VALUES (?, 0, 0, 0)", (name,))
+        try:
+            cursor.execute(f"INSERT INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0) ON CONFLICT (name) DO NOTHING", (name,))
+        except:
+            # Fallback for SQLite which doesn't support ON CONFLICT in some versions or uses INSERT OR IGNORE
+            cursor.execute(f"INSERT OR IGNORE INTO members (name, total_fine, paid_fine, violations) VALUES ({p}, 0, 0, 0)", (name,))
         
     conn.commit()
     conn.close()
@@ -64,9 +106,25 @@ class ActionRequest(BaseModel):
     action: str  # "add", "deduct", or "pay"
     amount: int = 10
 
+class LoginRequest(BaseModel):
+    role: str
+    password: str
+
+# In-memory session check for demonstration
+VALID_CREDENTIALS = {
+    "admin": "nahi@13",
+    "user": "user123"
+}
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    if req.role in VALID_CREDENTIALS and VALID_CREDENTIALS[req.role] == req.password:
+        return {"status": "success", "role": req.role}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
 @app.get("/api/members")
 def get_members():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_conn()
     cursor = conn.cursor()
     cursor.execute("SELECT name, total_fine, paid_fine, violations FROM members ORDER BY total_fine DESC")
     rows = cursor.fetchall()
@@ -78,11 +136,12 @@ def get_members():
     ]
 
 @app.post("/api/action")
-def record_action(req: ActionRequest):
-    conn = sqlite3.connect(DB_FILE)
+def record_action(req: ActionRequest, role: str = ""):
+    conn = get_db_conn()
     cursor = conn.cursor()
+    p = get_placeholder()
     
-    cursor.execute("SELECT total_fine, paid_fine, violations FROM members WHERE name = ?", (req.name,))
+    cursor.execute(f"SELECT total_fine, paid_fine, violations FROM members WHERE name = {p}", (req.name,))
     row = cursor.fetchone()
     
     if not row:
@@ -118,10 +177,10 @@ def record_action(req: ActionRequest):
         conn.close()
         raise HTTPException(status_code=400, detail="Invalid action")
         
-    cursor.execute("UPDATE members SET total_fine = ?, paid_fine = ?, violations = ? WHERE name = ?", (new_fine, new_paid, new_violations, req.name))
+    cursor.execute(f"UPDATE members SET total_fine = {p}, paid_fine = {p}, violations = {p} WHERE name = {p}", (new_fine, new_paid, new_violations, req.name))
     
     timestamp = datetime.now().strftime("%d %b %Y, %I:%M:%S %p")
-    cursor.execute("INSERT INTO transactions (name, timestamp, amount) VALUES (?, ?, ?)", (req.name, timestamp, amt_str))
+    cursor.execute(f"INSERT INTO transactions (name, timestamp, amount) VALUES ({p}, {p}, {p})", (req.name, timestamp, amt_str))
     
     conn.commit()
     conn.close()
@@ -130,7 +189,7 @@ def record_action(req: ActionRequest):
 
 @app.get("/api/transactions")
 def get_transactions():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_conn()
     cursor = conn.cursor()
     cursor.execute("SELECT name, timestamp, amount FROM transactions ORDER BY id DESC")
     rows = cursor.fetchall()
@@ -143,7 +202,7 @@ def get_transactions():
 
 @app.post("/api/reset")
 def reset_all_data():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_conn()
     cursor = conn.cursor()
     cursor.execute("UPDATE members SET total_fine = 0, paid_fine = 0, violations = 0")
     cursor.execute("DELETE FROM transactions")
@@ -153,3 +212,7 @@ def reset_all_data():
 
 # Serve static files for frontend routes
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
